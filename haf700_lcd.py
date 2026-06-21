@@ -24,6 +24,8 @@ import subprocess
 import sys
 import time
 
+__version__ = "1.0.0"
+
 PANEL_PKG = "com.magic.box"
 PANEL_ACT = f"{PANEL_PKG}/.ui.SplashActivity"
 FILES_DIR = f"/data/data/{PANEL_PKG}/files"
@@ -140,38 +142,52 @@ def read_current_pref():
     return m.group(1).upper() if m else None
 
 
-def read_current_filename():
-    hexs = read_current_pref()
+# ---------------------------------------------------------------------------
+# Pure currentType (magic.xml) codec helpers. No device/IO — unit-testable.
+# A currentType blob is: [config header][1-byte namelen][ASCII filename].
+# Filenames are <epoch>.mp4 (e.g. "1799990001.mp4").
+# ---------------------------------------------------------------------------
+
+def parse_filename_from_hex(hexs):
+    """Extract the <epoch>.mp4 filename from a currentType hex string, or None."""
     if not hexs:
         return None
     try:
         b = bytes.fromhex(hexs)
-        namelen = b[-1 - 14] if len(b) > 15 else None  # filenames are <epoch>.mp4 = 14 chars
-        # robust: last byte-run that is printable ascii ending in .mp4
         tail = b.decode("latin-1")
         m = re.search(r"(\d+\.mp4)$", tail)
         return m.group(1) if m else None
-    except Exception:
+    except (ValueError, UnicodeDecodeError):
         return None
 
 
-def make_current_type(filename):
-    """Build a new currentType hex: inherit the existing 29-byte header if present, else default."""
-    cur = read_current_pref()
+def build_current_type(cur_hex, filename):
+    """Build a new currentType hex: inherit the config header from cur_hex if it
+    parses, else fall back to DEFAULT_HEADER_HEX. Then append [namelen][name]."""
     name = filename.encode("ascii")
-    if cur:
-        b = bytes.fromhex(cur)
-        # strip trailing [namelen][name]; the name is ascii ending .mp4
-        tail = b.decode("latin-1")
-        m = re.search(r"(\d+\.mp4)$", tail)
-        if m:
-            header = b[: -(1 + len(m.group(1)))]
-        else:
-            header = bytes.fromhex(DEFAULT_HEADER_HEX)
-    else:
+    header = None
+    if cur_hex:
+        try:
+            b = bytes.fromhex(cur_hex)
+            tail = b.decode("latin-1")
+            m = re.search(r"(\d+\.mp4)$", tail)
+            if m:
+                header = b[: -(1 + len(m.group(1)))]
+        except (ValueError, UnicodeDecodeError):
+            header = None
+    if header is None:
         header = bytes.fromhex(DEFAULT_HEADER_HEX)
     new = header + bytes([len(name)]) + name
     return new.hex().upper()
+
+
+def read_current_filename():
+    return parse_filename_from_hex(read_current_pref())
+
+
+def make_current_type(filename):
+    """Build a new currentType hex: inherit the existing header if present, else default."""
+    return build_current_type(read_current_pref(), filename)
 
 
 def cmd_show(args):
@@ -227,6 +243,7 @@ def cmd_restore(_args):
 def main():
     p = argparse.ArgumentParser(prog="haf700-lcd", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--version", action="version", version=f"haf700-lcd {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("info", help="detect the panel and show its status").set_defaults(func=cmd_info)

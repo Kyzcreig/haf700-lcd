@@ -6,7 +6,7 @@ Drive the **Cooler Master HAF 700 EVO** case LCD from **Linux** — no Windows, 
 > This tool gives you full control from Linux: show any image, GIF, or video on it, and screenshot
 > what's currently displayed.
 
-![status](https://img.shields.io/badge/status-working-brightgreen) ![platform](https://img.shields.io/badge/platform-linux-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![CI](https://github.com/Kyzcreig/haf700-lcd/actions/workflows/smoke.yml/badge.svg) ![status](https://img.shields.io/badge/status-working-brightgreen) ![platform](https://img.shields.io/badge/platform-linux-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ## How it works (the TL;DR of the reverse-engineering)
 
@@ -106,6 +106,16 @@ interface signature, the `com.magic.box` file/pref mechanism, the `currentType` 
   `com.rdamicro.pcdatareceiver` package — not yet mapped. PRs welcome.
 - Only tested on one HAF 700 EVO (2024). Other Cooler Master cases/coolers that use the same MagicBox
   Android panel may work as-is — reports welcome.
+
+## Development
+
+The hardware-coupled commands need a real panel, but the tricky logic — the `currentType`
+(`magic.xml`) codec and the ffmpeg "no black bars" filter — is pure and unit-tested. CI runs them
+plus a CLI launch smoke test on every push:
+
+```bash
+python -m pytest -v        # 12 tests, no hardware needed
+```
 
 ## License
 
