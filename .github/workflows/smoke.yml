@@ -2,8 +2,10 @@ name: smoke
 
 on:
   push:
+    paths-ignore: ['CHANGELOG.md', 'README.md', 'docs/**']  # fleet R14 (t_e47ee8bf): skip commits that cannot change the result
     branches: [main]
   pull_request:
+    paths-ignore: ['CHANGELOG.md', 'README.md', 'docs/**']  # fleet R14 (t_e47ee8bf): skip commits that cannot change the result
   workflow_dispatch:
 
 jobs:
